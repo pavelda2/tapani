@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slovní automat – nekonečné sloupce</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    h1 {
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+      font-weight: 500;
+      opacity: 0.85;
+    }
+
+    .machine {
+      display: flex;
+      gap: 14px;
+      background: #222;
+      padding: 16px;
+      border-radius: 20px;
+    }
+
+    .column-wrapper {
+      position: relative;
+      width: 56px;
+      height: 392px;
+      overflow: hidden;
+      border-radius: 14px;
+      background: #000;
+    }
+
+    .column {
+      height: 100%;
+      overflow-y: scroll;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .column::-webkit-scrollbar { display: none; }
+
+    .letter {
+      position: relative;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .index {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      opacity: 0.9;
+    }
+
+    .index.i1 { color: #ff3b30; }
+    .index.i2 { color: #ff9500; }
+    .index.i3 { color: #ffcc00; }
+    .index.i4 { color: #34c759; }
+    .index.i5 { color: #007aff; }
+    .index.i6 { color: #5856d6; }
+    .index.i7 { color: #af52de; }
+
+    .frame {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 56px;
+      border: 2px solid #ff3b30;
+      border-radius: 10px;
+      pointer-events: none;
+      box-sizing: border-box;
+      transition: border-color 0.5s ease;
+    }
+
+    .frame.win {
+      border-color: #34c759;
+    }
+
+    .hint {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      opacity: 0.6;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Slovní automat</h1>
+
+  <div class="machine">
+    <div class="column-wrapper"><div class="column"></div><div class="frame"></div></div>
+    <div class="column-wrapper"><div class="column"></div><div class="frame"></div></div>
+    <div class="column-wrapper"><div class="column"></div><div class="frame"></div></div>
+    <div class="column-wrapper"><div class="column"></div><div class="frame"></div></div>
+    <div class="column-wrapper"><div class="column"></div><div class="frame"></div></div>
+  </div>
+
+  <div class="hint">Pokud horní řádek tvoří české podstatné jméno nebo vlastní jméno v 1. pádě, zvýrazní se zeleně</div>
+
+  <script>
+    const columns = [
+      ['M','D','M','M','S','R','S'],
+      ['A','A','A','R','I','Y','T'],
+      ['R','T','Š','K','R','B','R'],
+      ['I','L','L','E','K','K','O'],
+      ['E','E','E','V','A','A','M'],
+    ];
+
+    // Platná česká slova vytvořitelná z rotací aktuálních sloupců
+    const VALID_WORDS = new Set([
+      'MARIE', 'DATLE', 'MAŠLE', 'MRKEV', 'SIRKA', 'RYBKA', 'STROM'
+    ]);
+
+    const LETTER_HEIGHT = 56;
+    const DUPLICATION = 5;
+    const SNAP_DELAY = 120;
+
+    const columnEls = [...document.querySelectorAll('.column')];
+    const frameEls = [...document.querySelectorAll('.frame')];
+
+    function checkWord() {
+      let word = '';
+      columnEls.forEach(col => {
+        const index = Math.round(col.scrollTop / LETTER_HEIGHT) % 7;
+        word += col.children[index].querySelector('span').textContent;
+      });
+
+      const isWin = VALID_WORDS.has(word);
+      frameEls.forEach(f => f.classList.toggle('win', isWin));
+    }
+
+    columnEls.forEach((colEl, colIndex) => {
+      const data = columns[colIndex];
+
+      for (let d = 0; d < DUPLICATION; d++) {
+        data.forEach((letter, i) => {
+          const div = document.createElement('div');
+          div.className = 'letter';
+
+          const spanLetter = document.createElement('span');
+          spanLetter.textContent = letter;
+
+          const spanIndex = document.createElement('span');
+          spanIndex.className = `index i${i + 1}`;
+          spanIndex.textContent = i + 1;
+
+          div.appendChild(spanLetter);
+          div.appendChild(spanIndex);
+          colEl.appendChild(div);
+        });
+      }
+
+      const blockHeight = data.length * LETTER_HEIGHT;
+      const totalHeight = blockHeight * DUPLICATION;
+
+      colEl.scrollTop = blockHeight * 2;
+
+      let scrollTimeout;
+
+      colEl.addEventListener('scroll', () => {
+        while (colEl.scrollTop < blockHeight) colEl.scrollTop += blockHeight;
+        while (colEl.scrollTop > totalHeight - blockHeight * 2) colEl.scrollTop -= blockHeight;
+
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          const snapped = Math.round(colEl.scrollTop / LETTER_HEIGHT) * LETTER_HEIGHT;
+          colEl.scrollTo({ top: snapped, behavior: 'smooth' });
+          checkWord();
+        }, SNAP_DELAY);
+      });
+    });
+
+    checkWord();
+  </script>
+</body>
+</html>
